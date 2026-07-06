@@ -1,0 +1,1017 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Page Agent Playground</title>
+  <style>
+    /* ── Tokens ───────────────────────────────────────────────── */
+    :root {
+      --bg:         #f0f4f9;
+      --surface:    #ffffff;
+      --surface-2:  #e8eef7;
+      --border:     #c8d5e8;
+      --border-2:   #dde6f2;
+      --accent:     #2a7de1;
+      --accent-dim: rgba(42, 125, 225, 0.12);
+      --accent-glow:rgba(42, 125, 225, 0.25);
+      --text:       #1a2840;
+      --muted:      #5a7090;
+      --success:    #1a9e60;
+      --warn:       #c07a0a;
+      --error:      #d63a3a;
+      --running:    #2a7de1;
+      --radius:     8px;
+      --mono: "Fira Code", "Cascadia Code", ui-monospace, "SF Mono", Menlo, monospace;
+      --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:         #0c1117;
+        --surface:    #131b27;
+        --surface-2:  #1a2436;
+        --border:     #2a3a52;
+        --border-2:   #223048;
+        --accent:     #3b8eea;
+        --accent-dim: rgba(59, 142, 234, 0.12);
+        --accent-glow:rgba(59, 142, 234, 0.28);
+        --text:       #dce5f5;
+        --muted:      #7a8ba8;
+        --success:    #3dd68c;
+        --warn:       #f0b429;
+        --error:      #f87171;
+        --running:    #3b8eea;
+      }
+    }
+    :root[data-theme="light"] {
+      --bg:         #f0f4f9;
+      --surface:    #ffffff;
+      --surface-2:  #e8eef7;
+      --border:     #c8d5e8;
+      --border-2:   #dde6f2;
+      --accent:     #2a7de1;
+      --accent-dim: rgba(42, 125, 225, 0.12);
+      --accent-glow:rgba(42, 125, 225, 0.25);
+      --text:       #1a2840;
+      --muted:      #5a7090;
+      --success:    #1a9e60;
+      --warn:       #c07a0a;
+      --error:      #d63a3a;
+      --running:    #2a7de1;
+    }
+    :root[data-theme="dark"] {
+      --bg:         #0c1117;
+      --surface:    #131b27;
+      --surface-2:  #1a2436;
+      --border:     #2a3a52;
+      --border-2:   #223048;
+      --accent:     #3b8eea;
+      --accent-dim: rgba(59, 142, 234, 0.12);
+      --accent-glow:rgba(59, 142, 234, 0.28);
+      --text:       #dce5f5;
+      --muted:      #7a8ba8;
+      --success:    #3dd68c;
+      --warn:       #f0b429;
+      --error:      #f87171;
+      --running:    #3b8eea;
+    }
+
+    /* ── Reset ────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 15px; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 32px 16px 64px;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────── */
+    .shell {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── Header ───────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 4px;
+    }
+    .wordmark {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .wordmark-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 7px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .wordmark-icon svg { display: block; }
+    .wordmark-text {
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+    .wordmark-sub {
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-top: -2px;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 10px 4px 8px;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 0.2s;
+    }
+    .status-pill[data-status="idle"]    .status-dot { background: var(--muted); }
+    .status-pill[data-status="running"] .status-dot { background: var(--running); animation: pulse 1s ease-in-out infinite; }
+    .status-pill[data-status="done"]    .status-dot { background: var(--success); }
+    .status-pill[data-status="error"]   .status-dot { background: var(--error); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.85); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .status-dot { animation: none !important; }
+    }
+
+    .theme-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .theme-btn:hover { color: var(--text); border-color: var(--accent); }
+    .theme-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ── Card ─────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-2);
+      cursor: pointer;
+      user-select: none;
+    }
+    .card-header:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .card-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .card-chevron {
+      color: var(--muted);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+    .card[data-open="false"] .card-chevron { transform: rotate(-90deg); }
+    .card-body {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .card[data-open="false"] .card-body { display: none; }
+
+    /* ── Form ─────────────────────────────────────────────────── */
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    input[type="text"],
+    input[type="password"],
+    input[type="url"],
+    select {
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 11px;
+      width: 100%;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+    }
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+    input::placeholder { color: var(--muted); opacity: 0.7; }
+    .field-hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* ── Buttons ──────────────────────────────────────────────── */
+    .btn {
+      font-family: var(--sans);
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: 6px;
+      padding: 9px 18px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s, box-shadow 0.15s, background 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:not(:disabled):hover { opacity: 0.88; box-shadow: 0 2px 12px var(--accent-glow); }
+    .btn-ghost {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:not(:disabled):hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger {
+      background: transparent;
+      color: var(--error);
+      border: 1px solid var(--error);
+    }
+    .btn-danger:not(:disabled):hover { background: rgba(248, 113, 113, 0.08); }
+
+    /* ── Task input area ──────────────────────────────────────── */
+    .task-area {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .task-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .task-input-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    textarea {
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 12px;
+      width: 100%;
+      resize: vertical;
+      min-height: 72px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+      line-height: 1.55;
+    }
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+    textarea::placeholder { color: var(--muted); opacity: 0.7; }
+    .task-btns {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    /* ── Sample tasks ─────────────────────────────────────────── */
+    .samples {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .sample-chip {
+      font-size: 0.78rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 11px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .sample-chip:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .sample-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ── Playground content ───────────────────────────────────── */
+    .playground {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .playground-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-2);
+    }
+    .playground-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .playground-hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .playground-body {
+      padding: 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Demo content blocks */
+    .demo-section { display: flex; flex-direction: column; gap: 10px; }
+    .demo-section-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+    .demo-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .demo-input {
+      font-family: var(--sans);
+      font-size: 0.875rem;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .demo-input:focus { border-color: var(--accent); }
+    .demo-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .demo-btn {
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .demo-btn:hover { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .demo-output {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: var(--muted);
+      min-height: 36px;
+    }
+    .demo-divider {
+      border: none;
+      border-top: 1px solid var(--border-2);
+    }
+    .demo-count-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .demo-count-label { font-size: 0.875rem; flex: 1; color: var(--text); }
+    .demo-count-val {
+      font-variant-numeric: tabular-nums;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent);
+      width: 52px;
+      text-align: center;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      border-radius: 6px;
+      padding: 5px 0;
+    }
+    .demo-count-btn {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 32px;
+      height: 32px;
+      font-size: 1rem;
+      cursor: pointer;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .demo-count-btn:hover { background: var(--accent-dim); color: var(--accent); }
+
+    /* ── Execution log ────────────────────────────────────────── */
+    .log-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border-2);
+    }
+    .log-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .log-actions { display: flex; gap: 8px; align-items: center; }
+    .log-clear-btn {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .log-clear-btn:hover { color: var(--text); }
+    .log-clear-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .log-body {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      line-height: 1.65;
+      padding: 14px 18px;
+      height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .log-body::-webkit-scrollbar { width: 5px; }
+    .log-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .log-entry {
+      display: flex;
+      gap: 10px;
+      padding: 2px 0;
+    }
+    .log-time {
+      color: var(--muted);
+      opacity: 0.65;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.75rem;
+      padding-top: 1px;
+    }
+    .log-msg { color: var(--text); word-break: break-word; flex: 1; }
+    .log-entry[data-type="info"]    .log-msg { color: var(--text); }
+    .log-entry[data-type="step"]    .log-msg { color: var(--accent); }
+    .log-entry[data-type="success"] .log-msg { color: var(--success); }
+    .log-entry[data-type="error"]   .log-msg { color: var(--error); }
+    .log-entry[data-type="warn"]    .log-msg { color: var(--warn); }
+    .log-entry[data-type="muted"]   .log-msg { color: var(--muted); }
+    .log-empty {
+      color: var(--muted);
+      font-size: 0.8rem;
+      opacity: 0.7;
+      padding: 8px 0;
+    }
+
+    /* ── Notice banner ────────────────────────────────────────── */
+    .notice {
+      display: none;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-glow);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .notice.visible { display: block; }
+    .notice strong { color: var(--accent); }
+
+    /* ── Footer ───────────────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      opacity: 0.7;
+      padding-top: 8px;
+    }
+    .footer a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+    @media (max-width: 540px) {
+      .field-row { grid-template-columns: 1fr; }
+      .demo-form-grid { grid-template-columns: 1fr; }
+      .header { flex-wrap: wrap; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="wordmark">
+        <div class="wordmark-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M3 5.5L9 2L15 5.5V12.5L9 16L3 12.5V5.5Z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+            <circle cx="9" cy="9" r="2" fill="white"/>
+            <path d="M9 7V4M9 14V11M7.27 7.77L5.05 5.55M12.95 12.45L10.73 10.23M7.27 10.23L5.05 12.45M12.95 5.55L10.73 7.77" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="wordmark-text">Page Agent</div>
+          <div class="wordmark-sub">Playground</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="status-pill" id="statusPill" data-status="idle">
+          <span class="status-dot"></span>
+          <span id="statusLabel">Idle</span>
+        </div>
+        <button class="theme-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle light/dark theme">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+            <path id="themeIcon" d="M7.5 1v1M7.5 13v1M1 7.5H0M14 7.5h1M3.05 3.05L2.34 2.34M12.66 12.66l-.71-.71M3.05 11.95l-.71.71M12.66 2.34l-.71.71M7.5 4.5a3 3 0 100 6 3 3 0 000-6z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Config card -->
+    <div class="card" id="configCard" data-open="true">
+      <div class="card-header" id="configToggle" tabindex="0" role="button" aria-expanded="true" aria-controls="configBody">
+        <span class="card-title">LLM Configuration</span>
+        <svg class="card-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="card-body" id="configBody">
+        <div class="field">
+          <label for="baseUrl">Base URL</label>
+          <input type="url" id="baseUrl" placeholder="https://api.openai.com/v1" autocomplete="off" spellcheck="false" />
+          <span class="field-hint">OpenAI-compatible endpoint — e.g. DashScope, Together, local Ollama</span>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="apiKey">API Key</label>
+            <input type="password" id="apiKey" placeholder="sk-…" autocomplete="off" spellcheck="false" />
+          </div>
+          <div class="field">
+            <label for="modelName">Model</label>
+            <input type="text" id="modelName" placeholder="gpt-4o-mini" value="gpt-4o-mini" spellcheck="false" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="language">Language</label>
+          <select id="language">
+            <option value="en-US">English (en-US)</option>
+            <option value="zh-CN">中文 (zh-CN)</option>
+            <option value="ja-JP">日本語 (ja-JP)</option>
+            <option value="ko-KR">한국어 (ko-KR)</option>
+            <option value="de-DE">Deutsch (de-DE)</option>
+            <option value="fr-FR">Français (fr-FR)</option>
+          </select>
+        </div>
+        <div class="notice" id="configNotice">
+          <strong>Configuration saved.</strong> The agent will use these credentials for the next task.
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" id="saveConfigBtn">Save configuration</button>
+          <button class="btn btn-ghost" id="clearConfigBtn">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Task input -->
+    <div class="task-area">
+      <div class="task-label">Task</div>
+      <textarea id="taskInput" placeholder="Describe what you want the agent to do on this page…" rows="3"></textarea>
+      <div class="samples" id="sampleChips">
+        <button class="sample-chip" tabindex="0">Fill in the sample form with realistic data</button>
+        <button class="sample-chip" tabindex="0">Click the first action button</button>
+        <button class="sample-chip" tabindex="0">Increment the counter to 5</button>
+        <button class="sample-chip" tabindex="0">Fill name "Alice" and message "Hello world"</button>
+        <button class="sample-chip" tabindex="0">Set the counter to 0</button>
+      </div>
+      <div class="task-btns">
+        <button class="btn btn-danger" id="stopBtn" disabled>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1"/></svg>
+          Stop
+        </button>
+        <button class="btn btn-primary" id="runBtn">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+            <path d="M3 2l8 4.5L3 11V2z" fill="currentColor"/>
+          </svg>
+          Run task
+        </button>
+      </div>
+    </div>
+
+    <!-- Demo playground content -->
+    <div class="playground">
+      <div class="playground-header">
+        <span class="playground-title">Demo Content</span>
+        <span class="playground-hint">The agent can interact with anything below</span>
+      </div>
+      <div class="playground-body">
+        <!-- Form demo -->
+        <div class="demo-section">
+          <div class="demo-section-title">Sample form</div>
+          <div class="demo-form-grid">
+            <input class="demo-input" id="demoName" type="text" placeholder="Name" />
+            <input class="demo-input" id="demoEmail" type="email" placeholder="Email" />
+            <input class="demo-input" id="demoSubject" type="text" placeholder="Subject" style="grid-column: 1 / -1;" />
+            <textarea class="demo-input" id="demoMessage" placeholder="Message…" rows="3" style="grid-column: 1 / -1; resize: vertical;"></textarea>
+          </div>
+          <div id="demoFormOutput" class="demo-output" aria-live="polite">Form output will appear here after submit…</div>
+        </div>
+
+        <hr class="demo-divider" />
+
+        <!-- Button row demo -->
+        <div class="demo-section">
+          <div class="demo-section-title">Action buttons</div>
+          <div class="demo-btn-row">
+            <button class="demo-btn" id="demoBtn1" onclick="demoAction('Primary action triggered')">Primary action</button>
+            <button class="demo-btn" id="demoBtn2" onclick="demoAction('Secondary action triggered')">Secondary action</button>
+            <button class="demo-btn" id="demoBtn3" onclick="demoAction('Submit form triggered'); submitDemoForm()">Submit form</button>
+            <button class="demo-btn" id="demoBtn4" onclick="demoAction('Reset form triggered'); resetDemoForm()">Reset form</button>
+          </div>
+        </div>
+
+        <hr class="demo-divider" />
+
+        <!-- Counter demo -->
+        <div class="demo-section">
+          <div class="demo-section-title">Counter</div>
+          <div class="demo-count-row">
+            <span class="demo-count-label">Counter value</span>
+            <button class="demo-count-btn" id="decBtn" onclick="changeCounter(-1)" aria-label="Decrement">−</button>
+            <div class="demo-count-val" id="counterVal" aria-live="polite">0</div>
+            <button class="demo-count-btn" id="incBtn" onclick="changeCounter(1)" aria-label="Increment">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Execution log -->
+    <div class="log-card">
+      <div class="log-header">
+        <span class="log-title">Execution log</span>
+        <div class="log-actions">
+          <button class="log-clear-btn" id="clearLogBtn">Clear</button>
+        </div>
+      </div>
+      <div class="log-body" id="logBody" aria-live="polite" aria-label="Execution log">
+        <div class="log-empty" id="logEmpty">No tasks run yet. Configure the agent and run a task above.</div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      Powered by <a href="https://github.com/alibaba/page-agent" target="_blank" rel="noopener">alibaba/page-agent</a> &mdash; MIT License
+    </footer>
+  </div>
+
+  <!-- page-agent IIFE build -->
+  <script src="https://cdn.jsdelivr.net/npm/page-agent@1.11.0/dist/iife/page-agent.js" crossorigin="anonymous"></script>
+
+  <script>
+    /* ── Theme toggle ─────────────────────────────────────────── */
+    const root = document.documentElement;
+    const themeBtn = document.getElementById('themeBtn');
+    const prefersDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    function getCurrentTheme() {
+      return root.dataset.theme || (prefersDark() ? 'dark' : 'light');
+    }
+    function applyThemeIcon(theme) {
+      const icon = document.getElementById('themeIcon');
+      if (theme === 'dark') {
+        // Moon icon
+        icon.setAttribute('d', 'M7.5 1.5a6 6 0 100 11 4.5 4.5 0 010-11z');
+      } else {
+        // Sun icon
+        icon.setAttribute('d', 'M7.5 1v1M7.5 13v1M1 7.5H0M14 7.5h1M3.05 3.05L2.34 2.34M12.66 12.66l-.71-.71M3.05 11.95l-.71.71M12.66 2.34l-.71.71M7.5 4.5a3 3 0 100 6 3 3 0 000-6z');
+      }
+    }
+    themeBtn.addEventListener('click', () => {
+      const next = getCurrentTheme() === 'dark' ? 'light' : 'dark';
+      root.dataset.theme = next;
+      applyThemeIcon(next);
+    });
+    applyThemeIcon(getCurrentTheme());
+
+    /* ── Config card toggle ───────────────────────────────────── */
+    const configCard = document.getElementById('configCard');
+    const configToggle = document.getElementById('configToggle');
+    configToggle.addEventListener('click', toggleConfig);
+    configToggle.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleConfig(); } });
+    function toggleConfig() {
+      const open = configCard.dataset.open === 'true';
+      configCard.dataset.open = open ? 'false' : 'true';
+      configToggle.setAttribute('aria-expanded', !open);
+    }
+
+    /* ── Persist config ───────────────────────────────────────── */
+    const STORAGE_KEY = 'page-agent-config';
+    const saved = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch { return null; } })();
+    if (saved) {
+      document.getElementById('baseUrl').value   = saved.baseURL  || '';
+      document.getElementById('apiKey').value    = saved.apiKey   || '';
+      document.getElementById('modelName').value = saved.model    || 'gpt-4o-mini';
+      document.getElementById('language').value  = saved.language || 'en-US';
+    }
+
+    const configNotice = document.getElementById('configNotice');
+    document.getElementById('saveConfigBtn').addEventListener('click', () => {
+      const cfg = getConfig();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+      configNotice.classList.add('visible');
+      setTimeout(() => configNotice.classList.remove('visible'), 2800);
+      if (cfg.baseURL && cfg.apiKey) toggleConfig();
+    });
+    document.getElementById('clearConfigBtn').addEventListener('click', () => {
+      localStorage.removeItem(STORAGE_KEY);
+      ['baseUrl','apiKey','modelName','language'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el.tagName === 'SELECT') el.value = 'en-US';
+        else el.value = id === 'modelName' ? 'gpt-4o-mini' : '';
+      });
+    });
+
+    function getConfig() {
+      return {
+        baseURL:  document.getElementById('baseUrl').value.trim(),
+        apiKey:   document.getElementById('apiKey').value.trim(),
+        model:    document.getElementById('modelName').value.trim() || 'gpt-4o-mini',
+        language: document.getElementById('language').value,
+      };
+    }
+
+    /* ── Sample chips ─────────────────────────────────────────── */
+    document.querySelectorAll('.sample-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.getElementById('taskInput').value = chip.textContent;
+        document.getElementById('taskInput').focus();
+      });
+      chip.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chip.click(); }
+      });
+    });
+
+    /* ── Execution log ────────────────────────────────────────── */
+    const logBody  = document.getElementById('logBody');
+    const logEmpty = document.getElementById('logEmpty');
+
+    function addLog(msg, type = 'info') {
+      logEmpty.style.display = 'none';
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.dataset.type = type;
+      const now = new Date();
+      const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+      entry.innerHTML = `<span class="log-time">${ts}</span><span class="log-msg">${escapeHtml(msg)}</span>`;
+      logBody.appendChild(entry);
+      logBody.scrollTop = logBody.scrollHeight;
+    }
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    document.getElementById('clearLogBtn').addEventListener('click', () => {
+      logBody.innerHTML = '';
+      logBody.appendChild(logEmpty);
+      logEmpty.style.display = '';
+    });
+
+    /* ── Status pill ──────────────────────────────────────────── */
+    const statusPill  = document.getElementById('statusPill');
+    const statusLabel = document.getElementById('statusLabel');
+    function setStatus(s, label) {
+      statusPill.dataset.status = s;
+      statusLabel.textContent = label;
+    }
+
+    /* ── Agent ────────────────────────────────────────────────── */
+    let agent = null;
+    const runBtn  = document.getElementById('runBtn');
+    const stopBtn = document.getElementById('stopBtn');
+
+    function createAgent() {
+      const cfg = getConfig();
+      if (!cfg.baseURL) { addLog('Base URL is required — open the configuration panel above.', 'error'); return null; }
+      if (!cfg.apiKey)  { addLog('API Key is required — open the configuration panel above.', 'error'); return null; }
+
+      // PageAgent is exposed globally from the IIFE build
+      if (typeof PageAgent === 'undefined') {
+        addLog('page-agent script not loaded. Check your network connection and reload.', 'error');
+        return null;
+      }
+
+      try {
+        const a = new PageAgent({
+          model:    cfg.model,
+          baseURL:  cfg.baseURL,
+          apiKey:   cfg.apiKey,
+          language: cfg.language,
+          onBeforeStep: (ctx) => {
+            const tool  = ctx?.action?.tool  || ctx?.tool  || '';
+            const input = ctx?.action?.input || ctx?.input || '';
+            const desc  = tool ? `${tool}${input ? ': ' + JSON.stringify(input).slice(0, 120) : ''}` : JSON.stringify(ctx).slice(0,120);
+            addLog(`→ ${desc}`, 'step');
+          },
+          onAfterStep: (ctx) => {
+            const result = ctx?.result ?? ctx;
+            if (result && typeof result === 'object' && result.error) {
+              addLog(`  ✗ ${result.error}`, 'error');
+            }
+          },
+        });
+        return a;
+      } catch (err) {
+        addLog(`Failed to initialise agent: ${err.message}`, 'error');
+        return null;
+      }
+    }
+
+    runBtn.addEventListener('click', async () => {
+      const task = document.getElementById('taskInput').value.trim();
+      if (!task) { addLog('Enter a task description first.', 'warn'); return; }
+
+      if (agent) {
+        try { await agent.stop(); } catch {}
+        agent = null;
+      }
+
+      agent = createAgent();
+      if (!agent) return;
+
+      runBtn.disabled  = true;
+      stopBtn.disabled = false;
+      setStatus('running', 'Running');
+      addLog(`Task: ${task}`, 'info');
+
+      try {
+        const result = await agent.execute(task);
+        const success = result?.success !== false;
+        if (success) {
+          addLog('Task completed successfully.', 'success');
+          setStatus('done', 'Done');
+        } else {
+          addLog(`Task ended: ${result?.error || 'unknown reason'}`, 'warn');
+          setStatus('idle', 'Idle');
+        }
+      } catch (err) {
+        addLog(`Error: ${err.message}`, 'error');
+        setStatus('error', 'Error');
+      } finally {
+        runBtn.disabled  = false;
+        stopBtn.disabled = true;
+        agent = null;
+      }
+    });
+
+    stopBtn.addEventListener('click', async () => {
+      if (!agent) return;
+      addLog('Stopping agent…', 'warn');
+      try { await agent.stop(); } catch {}
+      agent = null;
+      runBtn.disabled  = false;
+      stopBtn.disabled = true;
+      setStatus('idle', 'Idle');
+    });
+
+    /* ── Demo playground helpers ──────────────────────────────── */
+    let counter = 0;
+    function changeCounter(delta) {
+      counter = Math.max(-99, Math.min(999, counter + delta));
+      document.getElementById('counterVal').textContent = counter;
+    }
+    function demoAction(msg) {
+      document.getElementById('demoFormOutput').textContent = msg;
+    }
+    function submitDemoForm() {
+      const name    = document.getElementById('demoName').value;
+      const email   = document.getElementById('demoEmail').value;
+      const subject = document.getElementById('demoSubject').value;
+      const message = document.getElementById('demoMessage').value;
+      if (!name && !email) {
+        document.getElementById('demoFormOutput').textContent = 'Form is empty.';
+        return;
+      }
+      document.getElementById('demoFormOutput').textContent =
+        `Submitted — name: ${name || '–'}, email: ${email || '–'}, subject: ${subject || '–'}, message: ${message || '–'}`;
+    }
+    function resetDemoForm() {
+      ['demoName','demoEmail','demoSubject','demoMessage'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('demoFormOutput').textContent = 'Form reset.';
+    }
+
+    /* ── CDN load feedback ────────────────────────────────────── */
+    window.addEventListener('load', () => {
+      if (typeof PageAgent === 'undefined') {
+        addLog('Warning: page-agent CDN script failed to load. Check network or CSP.', 'warn');
+      } else {
+        addLog('page-agent loaded. Configure credentials above, then run a task.', 'muted');
+      }
+    });
+  </script>
+</body>
+</html>
