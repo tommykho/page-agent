@@ -770,8 +770,14 @@
     </footer>
   </div>
 
-  <!-- page-agent IIFE build -->
-  <script src="https://cdn.jsdelivr.net/npm/page-agent@1.11.0/dist/iife/page-agent.js" crossorigin="anonymous"></script>
+  <!-- page-agent IIFE build — CDN with local fallback -->
+  <script>
+    // Prevent the demo bundle from auto-initialising its own floating panel
+    window.__pageAgentAutoInit = false;
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/page-agent@1.11.0/dist/iife/page-agent.demo.js"
+          crossorigin="anonymous"
+          onerror="this.onerror=null;this.src='page-agent.bundle.js'"></script>
 
   <script>
     /* ── Theme toggle ─────────────────────────────────────────── */
@@ -1007,9 +1013,9 @@
     /* ── CDN load feedback ────────────────────────────────────── */
     window.addEventListener('load', () => {
       if (typeof PageAgent === 'undefined') {
-        addLog('Warning: page-agent CDN script failed to load. Check network or CSP.', 'warn');
+        addLog('page-agent failed to load from CDN and local fallback. Reload the page.', 'error');
       } else {
-        addLog('page-agent loaded. Configure credentials above, then run a task.', 'muted');
+        addLog('page-agent ready. Configure credentials above, then run a task.', 'muted');
       }
     });
   </script>
