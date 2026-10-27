@@ -1,4 +1,16 @@
-# Page Agent Playground
+```
+██████╗  █████╗  ██████╗ ███████╗    █████╗  ██████╗ ███████╗ ███╗   ██╗ ████████╗
+██╔══██╗ ██╔══██╗ ██╔════╝ ██╔════╝    ██╔══██╗ ██╔════╝ ██╔════╝ ████╗  ██║ ╚══██╔══╝
+██████╔╝ ███████║ ██║  ███╗ █████╗      ███████║ ██║  ███╗ █████╗   ██╔██╗ ██║    ██║
+██╔═══╝  ██╔══██║ ██║   ██║ ██╔══╝      ██╔══██║ ██║   ██║ ██╔══╝   ██║╚██╗██║    ██║
+██║      ██║  ██║ ╚██████╔╝ ███████╗    ██║  ██║ ╚██████╔╝ ███████╗ ██║ ╚████║    ██║
+╚═╝      ╚═╝  ╚═╝  ╚═════╝ ╚══════╝    ╚═╝  ╚═╝  ╚═════╝ ╚══════╝ ╚═╝  ╚═══╝    ╚═╝
+GUI Agent Playground for the Web
+```
+
+![License](https://img.shields.io/badge/license-MIT-green) ![HTML](https://img.shields.io/badge/html-single--file-orange?logo=html5) ![NIM](https://img.shields.io/badge/NVIDIA-NIM-76b900?logo=nvidia) ![Stars](https://img.shields.io/github/stars/tommykho/page-agent?style=social)
+
+---
 
 A single-file HTML demo that turns any LLM into a web UI agent — no backend, no extensions, no build step. Open the file in a browser, paste your API key, and control the page with natural language.
 
@@ -76,3 +88,11 @@ The page loads the library from jsDelivr CDN first. If that fails (offline, netw
 
 - [alibaba/page-agent](https://github.com/alibaba/page-agent) — MIT License
 - Defaults to [NVIDIA NIM](https://build.nvidia.com) for inference
+
+---
+
+## Support
+
+If you find this useful, consider buying me a coffee!
+
+[![Donate via PayPal](https://img.shields.io/badge/Donate-PayPal-blue?logo=paypal)](https://paypal.me/tommykho)
